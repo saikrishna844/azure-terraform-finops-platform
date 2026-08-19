@@ -1,0 +1,44 @@
+name: Terraform CI
+
+on:
+  push:
+    branches:
+      - main
+
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  terraform-validation:
+    name: Terraform Validation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v7
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v4
+
+      - name: Terraform Format Check
+        run: terraform fmt -check -recursive
+
+      - name: Initialize Bootstrap
+        working-directory: bootstrap
+        run: terraform init -backend=false -input=false
+
+      - name: Validate Bootstrap
+        working-directory: bootstrap
+        run: terraform validate
+
+      - name: Initialize DEV
+        working-directory: environments/dev
+        run: terraform init -backend=false -input=false
+
+      - name: Validate DEV
+        working-directory: environments/dev
+        run: terraform validate
