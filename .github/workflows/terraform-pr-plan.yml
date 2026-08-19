@@ -14,30 +14,70 @@ jobs:
     name: Terraform DEV Plan
     runs-on: ubuntu-latest
 
+    # Required because our Azure OIDC federated credential
+    # trusts the GitHub "dev" environment.
     environment: dev
 
     env:
+      # Azure / Terraform authentication
       ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
       ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
       ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
+      # Terraform input variable
       TF_VAR_subscription_id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
     steps:
+      # -------------------------------------------------------
+      # 1. Checkout repository
+      # -------------------------------------------------------
       - name: Checkout Repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@v6
 
+      # -------------------------------------------------------
+      # 2. Install Terraform
+      # -------------------------------------------------------
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_wrapper: false
 
-      - name: Create SSH Public Key
+      # -------------------------------------------------------
+      # 3. Create SSH public key on GitHub runner
+      # -------------------------------------------------------
+      - name: Create and Validate SSH Public Key
+        shell: bash
+        env:
+          SSH_PUBLIC_KEY: ${{ vars.SSH_PUBLIC_KEY }}
         run: |
-          mkdir -p ~/.ssh
-          echo '${{ vars.SSH_PUBLIC_KEY }}' > ~/.ssh/finops_vm.pub
+          set -euo pipefail
 
+          mkdir -p "$HOME/.ssh"
+
+          if [ -z "${SSH_PUBLIC_KEY:-}" ]; then
+            echo "ERROR: SSH_PUBLIC_KEY environment variable is empty."
+            exit 1
+          fi
+
+          printf '%s\n' "$SSH_PUBLIC_KEY" > "$HOME/.ssh/finops_vm.pub"
+
+          chmod 600 "$HOME/.ssh/finops_vm.pub"
+
+          echo "Validating SSH public key..."
+
+          ssh-keygen -l -f "$HOME/.ssh/finops_vm.pub"
+
+          echo "SSH public key validation successful."
+
+      # -------------------------------------------------------
+      # 4. Check Terraform formatting
+      # -------------------------------------------------------
       - name: Terraform Format Check
         run: terraform fmt -check -recursive
 
+      # -------------------------------------------------------
+      # 5. Login to Azure using GitHub OIDC
+      # -------------------------------------------------------
       - name: Azure Login with OIDC
         uses: azure/login@v3
         with:
@@ -45,14 +85,35 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
+      # -------------------------------------------------------
+      # 6. Verify Azure authentication
+      # -------------------------------------------------------
+      - name: Verify Azure Authentication
+        shell: bash
+        run: |
+          az account show \
+            --query "{Subscription:name,Tenant:tenantId}" \
+            --output table
+
+      # -------------------------------------------------------
+      # 7. Initialize Terraform
+      #    Connects to Azure remote state backend
+      # -------------------------------------------------------
       - name: Terraform Init
         working-directory: environments/dev
         run: terraform init -input=false
 
+      # -------------------------------------------------------
+      # 8. Validate Terraform
+      # -------------------------------------------------------
       - name: Terraform Validate
         working-directory: environments/dev
         run: terraform validate
 
+      # -------------------------------------------------------
+      # 9. Generate Terraform Plan
+      #    PLAN ONLY - no terraform apply
+      # -------------------------------------------------------
       - name: Terraform Plan
         working-directory: environments/dev
         run: |
