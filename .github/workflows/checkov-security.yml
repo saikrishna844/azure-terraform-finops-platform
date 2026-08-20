@@ -16,9 +16,42 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # -------------------------------------------------------
+      # 1. Checkout repository
+      # -------------------------------------------------------
       - name: Checkout Repository
         uses: actions/checkout@v6
 
+      # -------------------------------------------------------
+      # 2. Verify exactly which commit/code Checkov will scan
+      # -------------------------------------------------------
+      - name: Verify Scanned Terraform Code
+        shell: bash
+        run: |
+          echo "GitHub SHA: $GITHUB_SHA"
+
+          echo "Checked-out SHA:"
+          git rev-parse HEAD
+
+          echo "--------------------------------------"
+          echo "Storage Security Controls"
+          echo "--------------------------------------"
+
+          grep -nE \
+            'shared_access_key_enabled|default_to_oauth_authentication|sas_policy|delete_retention_policy|checkov:skip' \
+            bootstrap/main.tf || true
+
+          echo "--------------------------------------"
+          echo "VM Security Controls"
+          echo "--------------------------------------"
+
+          grep -n \
+            'allow_extension_operations' \
+            modules/compute/main.tf || true
+
+      # -------------------------------------------------------
+      # 3. Run Checkov Terraform security scan
+      # -------------------------------------------------------
       - name: Run Checkov
         uses: bridgecrewio/checkov-action@v12
         with:
@@ -26,4 +59,7 @@ jobs:
           framework: terraform
           output_format: cli
           quiet: false
+
+          # Baseline mode:
+          # Report security issues but don't fail PR yet.
           soft_fail: true
