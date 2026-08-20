@@ -1,0 +1,58 @@
+name: Infracost Diff
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+  workflow_dispatch:
+    inputs:
+      pr-number:
+        description: "Pull request number to scan"
+        required: true
+        type: number
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  infracost-diff:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get PR details
+        id: pr
+        env:
+          GH_TOKEN: ${{ github.token }}
+          INPUT_PR_NUMBER: ${{ inputs.pr-number }}
+          PR_NUMBER: ${{ inputs.pr-number || github.event.pull_request.number }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+        run: |
+          if [ -n "$INPUT_PR_NUMBER" ]; then
+            BASE_REF=$(gh pr view "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --json baseRefName -q .baseRefName)
+            HEAD_REF=$(gh pr view "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --json headRefName -q .headRefName)
+          fi
+          echo "base-ref=${BASE_REF}" >> $GITHUB_OUTPUT
+          echo "head-ref=${HEAD_REF}" >> $GITHUB_OUTPUT
+          echo "pr-number=${PR_NUMBER}" >> $GITHUB_OUTPUT
+
+      - name: Checkout base branch
+        if: github.event.action != 'closed'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.pr.outputs.base-ref }}
+          path: base
+
+      - name: Checkout head branch
+        if: github.event.action != 'closed'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.pr.outputs.head-ref }}
+          path: head
+
+      - name: Run Infracost Diff
+        uses: infracost/actions/diff@c2e668fda0716ccc96353c6e6438c4a20448821a
+        with:
+          api-key: ${{ secrets.INFRACOST_API_KEY }}
+          base-path: ${{ github.event.action != 'closed' && 'base' || '' }}
+          head-path: ${{ github.event.action != 'closed' && 'head' || '' }}
+          pr-number: ${{ steps.pr.outputs.pr-number }}
