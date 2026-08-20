@@ -1,0 +1,57 @@
+name: Checkov Security Scan
+
+on:
+  pull_request:
+    branches:
+      - main
+
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  checkov:
+    name: Terraform Security Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      # -------------------------------------------------------
+      # 1. Checkout repository
+      # -------------------------------------------------------
+      - name: Checkout Repository
+        uses: actions/checkout@v6
+
+      # -------------------------------------------------------
+      # 2. Setup Python
+      # -------------------------------------------------------
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      # -------------------------------------------------------
+      # 3. Install a fixed Checkov version
+      # -------------------------------------------------------
+      - name: Install Checkov
+        run: |
+          python -m pip install --upgrade pip
+          pip install checkov==3.3.13
+
+      # -------------------------------------------------------
+      # 4. Show Checkov version
+      # -------------------------------------------------------
+      - name: Check Checkov Version
+        run: checkov --version
+
+      # -------------------------------------------------------
+      # 5. Run Terraform security scan
+      # -------------------------------------------------------
+      - name: Run Checkov
+        run: |
+          checkov \
+            --directory . \
+            --framework terraform \
+            --skip-check CKV2_AZURE_21 \
+            --output cli \
+            --soft-fail

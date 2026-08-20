@@ -42,7 +42,7 @@ module "compute" {
 
   vm_size        = var.vm_size
   admin_username = var.admin_username
-  ssh_public_key = local.ssh_public_key
+  ssh_public_key = data.azurerm_ssh_public_key.vm.public_key
 
   tags = local.common_tags
 }
@@ -74,4 +74,8 @@ module "governance" {
   required_tags = var.required_tags
 
   enforce_policy = var.enforce_tag_policy
+}
+data "azurerm_ssh_public_key" "vm" {
+  name                = "sshkey-terraform-finops-dev-001"
+  resource_group_name = "rg-tfstate-finops-001"
 }

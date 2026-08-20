@@ -12,3 +12,8 @@ output "container_name" {
   description = "Terraform state Blob container"
   value       = azurerm_storage_container.tfstate.name
 }
+
+output "ssh_public_key_name" {
+  description = "Azure SSH Public Key resource name"
+  value       = azurerm_ssh_public_key.finops.name
+}

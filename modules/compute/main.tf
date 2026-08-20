@@ -20,6 +20,8 @@ resource "azurerm_linux_virtual_machine" "this" {
 
   admin_username = var.admin_username
 
+  allow_extension_operations = false
+
   network_interface_ids = [
     azurerm_network_interface.this.id
   ]

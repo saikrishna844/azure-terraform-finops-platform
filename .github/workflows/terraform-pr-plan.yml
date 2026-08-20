@@ -25,15 +25,29 @@ jobs:
 
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@v6
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_wrapper: false
 
-      - name: Create SSH Public Key
+      - name: Prepare and Validate SSH Public Key
+        shell: bash
         run: |
-          mkdir -p ~/.ssh
-          echo '${{ vars.SSH_PUBLIC_KEY }}' > ~/.ssh/finops_vm.pub
+          set -euo pipefail
+
+          mkdir -p "$HOME/.ssh"
+
+          cp keys/finops_vm.pub "$HOME/.ssh/finops_vm.pub"
+
+          chmod 600 "$HOME/.ssh/finops_vm.pub"
+
+          echo "Validating SSH public key..."
+
+          ssh-keygen -l -f "$HOME/.ssh/finops_vm.pub"
+
+          echo "SSH public key validation successful."
 
       - name: Terraform Format Check
         run: terraform fmt -check -recursive
@@ -44,6 +58,12 @@ jobs:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Verify Azure Authentication
+        run: |
+          az account show \
+            --query "{Subscription:name,Tenant:tenantId}" \
+            --output table
 
       - name: Terraform Init
         working-directory: environments/dev

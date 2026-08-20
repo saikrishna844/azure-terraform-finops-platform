@@ -38,3 +38,8 @@ variable "enforce_tag_policy" {
   type        = bool
   default     = false
 }
+
+variable "ssh_public_key_path" {
+  description = "Local path to the SSH public key used for DEV VMs"
+  type        = string
+}
