@@ -22,10 +22,21 @@ resource "azurerm_resource_group" "tfstate" {
 
 resource "azurerm_storage_account" "tfstate" {
 
-  #checkov:skip=CKV_AZURE_59:Public network access is required for GitHub-hosted runners in this lab. Access is protected with Microsoft Entra ID, RBAC, and OIDC. Production would use private endpoints/self-hosted runners.
-  #checkov:skip=CKV_AZURE_206:LRS is intentionally used for this cost-conscious DEV/portfolio environment. Production Terraform state would use GRS/GZRS based on resilience requirements.
-  #checkov:skip=CKV_AZURE_33:Azure Queue service is not used by this Terraform remote-state backend; state is stored in a private Blob container.
+  # --------------------------------------------------
+  # Accepted Checkov findings for DEV/portfolio design
+  # --------------------------------------------------
 
+  #checkov:skip=CKV_AZURE_59:Public network connectivity is required for GitHub-hosted Actions runners. Data access is protected using Microsoft Entra ID, RBAC and OIDC. Production would use a private endpoint with a private/self-hosted runner.
+
+  #checkov:skip=CKV2_AZURE_33:Private Endpoint intentionally omitted because GitHub-hosted runners require public network connectivity. Production architecture would use Private Link and a self-hosted runner inside Azure networking.
+
+  #checkov:skip=CKV_AZURE_206:LRS is intentionally selected for this cost-conscious DEV FinOps environment. Production state storage would use GRS/GZRS according to business continuity requirements.
+
+  #checkov:skip=CKV_AZURE_33:Azure Queue Storage is not used by this Terraform state backend, therefore Queue service logging is not enabled.
+
+  #checkov:skip=CKV2_AZURE_21:Blob request logging is omitted in this DEV lab to avoid additional logging architecture and ingestion cost. Production would forward storage diagnostics to a dedicated monitoring/security workspace.
+
+  #checkov:skip=CKV2_AZURE_1:Microsoft-managed encryption is accepted for this DEV portfolio environment. Production environments with regulatory requirements would use Customer Managed Keys.
 
   name = "stfinopstf${random_string.storage_suffix.result}"
 
@@ -38,6 +49,29 @@ resource "azurerm_storage_account" "tfstate" {
   min_tls_version                 = "TLS1_2"
   public_network_access_enabled   = true
   allow_nested_items_to_be_public = false
+
+  # Disable Storage Account Shared Key authentication
+  shared_access_key_enabled = false
+
+  # Prefer Microsoft Entra authentication in Azure Portal
+  default_to_oauth_authentication = true
+
+  # Limit SAS token lifetime
+  sas_policy {
+    expiration_period = "01.00:00:00"
+    expiration_action = "Log"
+  }
+
+  # Protect accidentally deleted Terraform state blobs
+  blob_properties {
+    delete_retention_policy {
+      days = 7
+    }
+
+    container_delete_retention_policy {
+      days = 7
+    }
+  }
 
   tags = {
     Environment = "shared"
