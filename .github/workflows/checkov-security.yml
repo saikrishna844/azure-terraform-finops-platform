@@ -60,6 +60,10 @@ jobs:
           output_format: cli
           quiet: false
 
-          # Baseline mode:
-          # Report security issues but don't fail PR yet.
+          # Accepted DEV trade-off:
+          # Blob read logging is intentionally not enabled
+          # to avoid additional logging/ingestion cost.
+          # Production would enable Storage diagnostics.
+          skip_check: CKV2_AZURE_21
+
           soft_fail: true
