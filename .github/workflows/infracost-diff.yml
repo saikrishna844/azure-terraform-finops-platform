@@ -83,32 +83,40 @@ jobs:
       # -------------------------------------------------------
       # 6. Prepare SSH public key used by Terraform
       # -------------------------------------------------------
-      - name: Prepare SSH Public Key
+            - name: Prepare SSH Public Key
         shell: bash
         run: |
           set -euo pipefail
 
           mkdir -p "$HOME/.ssh"
 
-          echo "Retrieving SSH public key from Azure..."
+          if [ -z "${FINOPS_SSH_PUBLIC_KEY_B64:-}" ]; then
+            echo "ERROR: FINOPS_SSH_PUBLIC_KEY_B64 is empty."
+            exit 1
+          fi
 
-          az sshkey show \
-            --resource-group "rg-tfstate-finops-001" \
-            --name "sshkey-terraform-finops-dev-001" \
-            --query "publicKey" \
-            --output tsv | tr -d '\r' > "$HOME/.ssh/finops_vm.pub"
+          printf '%s' "$FINOPS_SSH_PUBLIC_KEY_B64" \
+            | base64 --decode \
+            > "$HOME/.ssh/finops_vm.pub"
+
+          tr -d '\r' < "$HOME/.ssh/finops_vm.pub" \
+            > "$HOME/.ssh/finops_vm.clean"
+
+          mv "$HOME/.ssh/finops_vm.clean" \
+            "$HOME/.ssh/finops_vm.pub"
 
           chmod 644 "$HOME/.ssh/finops_vm.pub"
 
-          if [ ! -s "$HOME/.ssh/finops_vm.pub" ]; then
-            echo "ERROR: Azure returned an empty SSH public key."
-            exit 1
-          fi
+          echo "SSH key type:"
+          awk '{print $1}' "$HOME/.ssh/finops_vm.pub"
+
+          echo "SSH key file size:"
+          wc -c "$HOME/.ssh/finops_vm.pub"
 
           echo "Validating SSH public key..."
           ssh-keygen -l -f "$HOME/.ssh/finops_vm.pub"
 
-          echo "SSH public key prepared successfully."
+          echo "SSH public key validated successfully."
 
       # =======================================================
       # BASE BRANCH
