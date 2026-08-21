@@ -90,33 +90,23 @@ jobs:
 
           mkdir -p "$HOME/.ssh"
 
-          if [ -z "${FINOPS_SSH_PUBLIC_KEY_B64:-}" ]; then
-            echo "ERROR: FINOPS_SSH_PUBLIC_KEY_B64 is empty."
-            exit 1
-          fi
+          echo "Generating temporary SSH key for Terraform plan..."
 
-          printf '%s' "$FINOPS_SSH_PUBLIC_KEY_B64" \
-            | base64 --decode \
-            > "$HOME/.ssh/finops_vm.pub"
+          ssh-keygen \
+            -t rsa \
+            -b 4096 \
+            -f "$HOME/.ssh/finops_vm" \
+            -N "" \
+            -C "github-actions-infracost" \
+            -q
 
-          tr -d '\r' < "$HOME/.ssh/finops_vm.pub" \
-            > "$HOME/.ssh/finops_vm.clean"
-
-          mv "$HOME/.ssh/finops_vm.clean" \
-            "$HOME/.ssh/finops_vm.pub"
-
+          chmod 600 "$HOME/.ssh/finops_vm"
           chmod 644 "$HOME/.ssh/finops_vm.pub"
 
-          echo "SSH key type:"
-          awk '{print $1}' "$HOME/.ssh/finops_vm.pub"
-
-          echo "SSH key file size:"
-          wc -c "$HOME/.ssh/finops_vm.pub"
-
-          echo "Validating SSH public key..."
+          echo "Validating generated public key..."
           ssh-keygen -l -f "$HOME/.ssh/finops_vm.pub"
 
-          echo "SSH public key validated successfully."
+          echo "Temporary SSH public key created successfully."
 
       # =======================================================
       # BASE BRANCH
