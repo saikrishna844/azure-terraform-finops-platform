@@ -48,5 +48,4 @@ required_tags = [
   "ManagedBy",
   "Service"
 ]
-
 enforce_tag_policy = true

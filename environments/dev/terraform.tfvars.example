@@ -35,7 +35,9 @@ required_tags = [
   "Project",
   "Owner",
   "CostCenter",
-  "ManagedBy"
+  "ManagedBy",
+  "Service"
 ]
+service_name = "azure-finops-platform"
 
 enforce_tag_policy = false
