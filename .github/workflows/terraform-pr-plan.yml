@@ -23,17 +23,37 @@ jobs:
 
       TF_VAR_subscription_id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-    steps:
+    steps:       
       - name: Checkout Repository
         uses: actions/checkout@v7
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v4
 
-      - name: Create SSH Public Key
+      - name: Prepare SSH Public Key
+        shell: bash
         run: |
-          mkdir -p ~/.ssh
-          echo '${{ vars.SSH_PUBLIC_KEY }}' > ~/.ssh/finops_vm.pub
+          set -euo pipefail
+
+          mkdir -p "$HOME/.ssh"
+
+          echo "Generating temporary SSH key for Terraform PR plan..."
+
+          ssh-keygen \
+            -t rsa \
+            -b 4096 \
+            -f "$HOME/.ssh/finops_vm" \
+            -N "" \
+            -C "github-actions-terraform-plan" \
+            -q
+
+          chmod 600 "$HOME/.ssh/finops_vm"
+          chmod 644 "$HOME/.ssh/finops_vm.pub"
+
+          echo "Validating generated SSH public key..."
+          ssh-keygen -l -f "$HOME/.ssh/finops_vm.pub"
+
+          echo "SSH public key created successfully."
 
       - name: Terraform Format Check
         run: terraform fmt -check -recursive
