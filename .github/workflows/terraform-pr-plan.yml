@@ -23,7 +23,7 @@ jobs:
 
       TF_VAR_subscription_id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-    steps:
+    steps:       
       - name: Checkout Repository
         uses: actions/checkout@v7
 
