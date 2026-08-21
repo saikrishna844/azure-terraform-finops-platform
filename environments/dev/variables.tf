@@ -78,7 +78,8 @@ variable "required_tags" {
     "Project",
     "Owner",
     "CostCenter",
-    "ManagedBy"
+    "ManagedBy",
+    "Service"
   ]
 }
 
