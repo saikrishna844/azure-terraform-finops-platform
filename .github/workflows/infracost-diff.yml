@@ -31,7 +31,7 @@ jobs:
       TF_VAR_subscription_id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       # Existing GitHub environment variable
-      SSH_PUBLIC_KEY_B64: ${{ vars.SSH_PUBLIC_KEY_B64 }}
+      SSH_PUBLIC_KEY: ${{ vars.SSH_PUBLIC_KEY }}
 
     steps:
 
@@ -90,8 +90,7 @@ jobs:
 
           mkdir -p "$HOME/.ssh"
 
-          echo "$SSH_PUBLIC_KEY_B64" | base64 --decode \
-            > "$HOME/.ssh/finops_vm.pub"
+          printf '%s\n' "$SSH_PUBLIC_KEY" > "$HOME/.ssh/finops_vm.pub"
 
           chmod 644 "$HOME/.ssh/finops_vm.pub"
 
