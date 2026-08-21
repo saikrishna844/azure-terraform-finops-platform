@@ -87,3 +87,8 @@ variable "enforce_tag_policy" {
   type        = bool
   default     = false
 }
+
+variable "service_name" {
+  description = "Service name used for FinOps tagging"
+  type        = string
+}
