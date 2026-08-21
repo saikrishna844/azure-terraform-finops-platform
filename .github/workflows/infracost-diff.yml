@@ -188,3 +188,39 @@ jobs:
             --github-token=${{ github.token }} \
             --pull-request=${{ github.event.pull_request.number }} \
             --behavior=update
+
+      # -------------------------------------------------------
+      # Enforce mandatory FinOps Service tag
+      # -------------------------------------------------------
+      - name: FinOps Mandatory Service Tag Guardrail
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          echo "Checking Terraform plan for mandatory Service tag..."
+
+          MISSING_RESOURCES=$(jq -r '
+            .resource_changes[]
+            | select(.change.after != null)
+            | select(.change.after | type == "object")
+            | select(.change.after | has("tags"))
+            | select(
+                (.change.after.tags // {} | has("Service")) == false
+                or
+                ((.change.after.tags.Service // "") | tostring | length) == 0
+              )
+            | .address
+          ' /tmp/head-plan.json)
+
+          if [ -n "$MISSING_RESOURCES" ]; then
+            echo "::error title=FinOps Tag Governance Failed::Mandatory tag Service is missing."
+            echo ""
+            echo "Resources missing mandatory Service tag:"
+            echo "$MISSING_RESOURCES"
+            echo ""
+            echo "FinOps policy: all taggable Azure resources must contain the Service tag."
+            exit 1
+          fi
+
+          echo "FinOps tag governance passed."
+          echo "All taggable resources contain the mandatory Service tag."
