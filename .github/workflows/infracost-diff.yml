@@ -83,7 +83,7 @@ jobs:
       # -------------------------------------------------------
       # 6. Prepare SSH public key used by Terraform
       # -------------------------------------------------------
-            - name: Prepare SSH Public Key
+      - name: Prepare SSH Public Key
         shell: bash
         run: |
           set -euo pipefail
