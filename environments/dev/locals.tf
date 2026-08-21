@@ -6,5 +6,5 @@ locals {
     CostCenter  = var.cost_center
     ManagedBy   = "Terraform"
   }
-  ssh_public_key = file(pathexpand(var.ssh_public_key_path))
+  ssh_public_key = trimspace(file(pathexpand(var.ssh_public_key_path)))
 }
