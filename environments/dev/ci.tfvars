@@ -26,7 +26,7 @@ management_subnet_prefixes = [
 
 # Compute
 
-vm_size = "Standard_B1s"
+vm_size = "Standard_D4s_v5"
 
 admin_username = "azureadmin"
 
