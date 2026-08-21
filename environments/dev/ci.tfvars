@@ -36,7 +36,7 @@ ssh_public_key_path = "/home/runner/.ssh/finops_vm.pub"
 # Monitoring
 
 cpu_alert_threshold = 80
-
+service_name        = "azure-finops-platform"
 
 # Governance
 
@@ -45,7 +45,7 @@ required_tags = [
   "Project",
   "Owner",
   "CostCenter",
-  "ManagedBy"
+  "ManagedBy",
+  "Service"
 ]
-
 enforce_tag_policy = true
