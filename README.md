@@ -557,11 +557,17 @@ This project provided hands-on experience with:
 
 ---
 
-# Interview Explanation
+# Engineering Summary
 
-A simple way to explain this project during an interview:
+This project implements a pre-deployment FinOps governance workflow for Azure infrastructure managed with Terraform.
 
-> I built an Azure Terraform FinOps platform where every infrastructure change goes through a GitHub pull request. GitHub Actions authenticates to Azure using OIDC, validates the Terraform configuration and generates the Terraform plan. Infracost then analyzes that plan and estimates the cost before deployment. I added FinOps guardrails to detect high-cost changes and mandatory Service-tag violations. For example, when I changed a VM from Standard_B1s to Standard_D8s_v5, Infracost detected an estimated $287 monthly increase, which exceeded the configured $250 threshold and blocked the change. I also demonstrated a missing Service-tag scenario where Terraform was technically valid but the FinOps governance pipeline rejected the change.
+Every infrastructure change is submitted through a GitHub pull request. GitHub Actions authenticates to Azure using OIDC, validates the Terraform configuration, generates a Terraform plan, and passes the plan to Infracost for cost estimation.
+
+The workflow also enforces FinOps guardrails such as cost-increase thresholds and mandatory resource tagging.
+
+For example, changing the DEV virtual machine from `Standard_B1s` to `Standard_D8s_v5` produced an estimated monthly increase of approximately `$287`. Because this exceeded the configured `$250` threshold, the FinOps check failed and the change was prevented from being merged.
+
+The project also demonstrates governance enforcement by detecting Azure resources that are missing the mandatory `Service` tag, even when the Terraform configuration itself is technically valid.
 
 ---
 
