@@ -35,3 +35,7 @@ Thumbs.db
 *.pfx
 .env
 .infracost/
+
+environments/dev/infracost-plan.json
+
+environments/dev/infracost.tfplan
