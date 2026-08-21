@@ -1,41 +1,28 @@
-# Terraform working directory
+# Terraform working directories
 **/.terraform/*
 
 # Terraform state
 *.tfstate
 *.tfstate.*
 
-# Terraform plans
+# Terraform plan files
 *.tfplan
-tfplan
 
-# Local variable files
-terraform.tfvars
-*.auto.tfvars
-
-# Terraform crash logs
+# Crash logs
 crash.log
 crash.*.log
 
-# Override files
-override.tf
-override.tf.json
-*_override.tf
-*_override.tf.json
+# Terraform variable files containing local/secrets
+*.tfvars
+!*.tfvars.example
+!ci.tfvars
 
-# OS / IDE
-.DS_Store
-Thumbs.db
-.vscode/
-.idea/
-
-# Sensitive/local files
-*.pem
-*.key
-*.pfx
-.env
-.infracost/
+# Infracost generated files
+infracost-plan.json
+infracost*.json
 
 environments/dev/infracost-plan.json
 
 environments/dev/infracost.tfplan
+
+**/tfplan
