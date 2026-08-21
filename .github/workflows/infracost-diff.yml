@@ -90,12 +90,25 @@ jobs:
 
           mkdir -p "$HOME/.ssh"
 
-          printf '%s\n' "$SSH_PUBLIC_KEY" > "$HOME/.ssh/finops_vm.pub"
+          echo "Retrieving SSH public key from Azure..."
+
+          az sshkey show \
+            --resource-group "rg-tfstate-finops-001" \
+            --name "sshkey-terraform-finops-dev-001" \
+            --query "publicKey" \
+            --output tsv | tr -d '\r' > "$HOME/.ssh/finops_vm.pub"
 
           chmod 644 "$HOME/.ssh/finops_vm.pub"
 
+          if [ ! -s "$HOME/.ssh/finops_vm.pub" ]; then
+            echo "ERROR: Azure returned an empty SSH public key."
+            exit 1
+          fi
+
           echo "Validating SSH public key..."
           ssh-keygen -l -f "$HOME/.ssh/finops_vm.pub"
+
+          echo "SSH public key prepared successfully."
 
       # =======================================================
       # BASE BRANCH
