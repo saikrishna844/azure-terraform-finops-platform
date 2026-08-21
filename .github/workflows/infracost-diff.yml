@@ -1,0 +1,190 @@
+name: Infracost Diff
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - synchronize
+      - reopened
+
+permissions:
+  contents: read
+  pull-requests: write
+  id-token: write
+
+jobs:
+  infracost-diff:
+    name: Infracost Cost Diff
+    runs-on: ubuntu-latest
+
+    # Important:
+    # Your Azure OIDC federated credential is tied to environment:dev
+    environment: dev
+
+    env:
+      ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      TF_VAR_subscription_id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      # Existing GitHub environment variable
+      SSH_PUBLIC_KEY: ${{ vars.SSH_PUBLIC_KEY }}
+
+    steps:
+
+      # -------------------------------------------------------
+      # 1. Checkout BASE branch
+      # -------------------------------------------------------
+      - name: Checkout base branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: base
+
+      # -------------------------------------------------------
+      # 2. Checkout PR / HEAD branch
+      # -------------------------------------------------------
+      - name: Checkout head branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: head
+
+      # -------------------------------------------------------
+      # 3. Install Terraform
+      # terraform_wrapper false is important for clean JSON
+      # -------------------------------------------------------
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_wrapper: false
+
+      # -------------------------------------------------------
+      # 4. Install Infracost CLI
+      # -------------------------------------------------------
+      - name: Setup Infracost
+        uses: infracost/actions/setup@v3
+        with:
+          api-key: ${{ secrets.INFRACOST_API_KEY }}
+
+      # -------------------------------------------------------
+      # 5. Azure authentication using OIDC
+      # -------------------------------------------------------
+      - name: Azure Login with OIDC
+        uses: azure/login@v3
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      # -------------------------------------------------------
+      # 6. Prepare SSH public key used by Terraform
+      # -------------------------------------------------------
+      - name: Prepare SSH Public Key
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mkdir -p "$HOME/.ssh"
+
+          echo "Generating temporary SSH key for Terraform plan..."
+
+          ssh-keygen \
+            -t rsa \
+            -b 4096 \
+            -f "$HOME/.ssh/finops_vm" \
+            -N "" \
+            -C "github-actions-infracost" \
+            -q
+
+          chmod 600 "$HOME/.ssh/finops_vm"
+          chmod 644 "$HOME/.ssh/finops_vm.pub"
+
+          echo "Validating generated public key..."
+          ssh-keygen -l -f "$HOME/.ssh/finops_vm.pub"
+
+          echo "Temporary SSH public key created successfully."
+
+      # =======================================================
+      # BASE BRANCH
+      # =======================================================
+
+      - name: Terraform Init - Base
+        working-directory: base/environments/dev
+        run: |
+          terraform init -input=false
+
+      - name: Terraform Plan - Base
+        working-directory: base/environments/dev
+        run: |
+          terraform plan \
+            -input=false \
+            -no-color \
+            -var-file=ci.tfvars \
+            -out=/tmp/base.tfplan
+
+      - name: Terraform Plan JSON - Base
+        working-directory: base/environments/dev
+        run: |
+          terraform show -json /tmp/base.tfplan \
+            > /tmp/base-plan.json
+
+      # -------------------------------------------------------
+      # Generate Infracost baseline from resolved Terraform JSON
+      # -------------------------------------------------------
+      - name: Infracost Baseline
+        run: |
+          infracost breakdown \
+            --path=/tmp/base-plan.json \
+            --format=json \
+            --out-file=/tmp/infracost-base.json
+
+      # =======================================================
+      # HEAD / PR BRANCH
+      # =======================================================
+
+      - name: Terraform Init - Head
+        working-directory: head/environments/dev
+        run: |
+          terraform init -input=false
+
+      - name: Terraform Plan - Head
+        working-directory: head/environments/dev
+        run: |
+          terraform plan \
+            -input=false \
+            -no-color \
+            -var-file=ci.tfvars \
+            -out=/tmp/head.tfplan
+
+      - name: Terraform Plan JSON - Head
+        working-directory: head/environments/dev
+        run: |
+          terraform show -json /tmp/head.tfplan \
+            > /tmp/head-plan.json
+
+      # -------------------------------------------------------
+      # Compare PR infrastructure against main
+      # -------------------------------------------------------
+      - name: Generate Infracost Diff
+        run: |
+          infracost diff \
+            --path=/tmp/head-plan.json \
+            --format=json \
+            --compare-to=/tmp/infracost-base.json \
+            --out-file=/tmp/infracost.json
+
+      # -------------------------------------------------------
+      # Post/update cost comment on Pull Request
+      # -------------------------------------------------------
+      - name: Post Infracost PR Comment
+        run: |
+          infracost comment github \
+            --path=/tmp/infracost.json \
+            --repo=$GITHUB_REPOSITORY \
+            --github-token=${{ github.token }} \
+            --pull-request=${{ github.event.pull_request.number }} \
+            --behavior=update

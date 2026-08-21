@@ -30,7 +30,7 @@ vm_size = "Standard_B1s"
 
 admin_username = "azureadmin"
 
-ssh_public_key_path = "~/.ssh/finops_vm.pub"
+ssh_public_key_path = "/home/runner/.ssh/finops_vm.pub"
 
 
 # Monitoring

@@ -1,0 +1,21 @@
+name: Infracost Scan
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  infracost-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run Infracost Scan
+        uses: infracost/actions/scan@c2e668fda0716ccc96353c6e6438c4a20448821a
+        with:
+          api-key: ${{ secrets.INFRACOST_API_KEY }}
+          path: .
